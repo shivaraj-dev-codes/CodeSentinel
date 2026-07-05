@@ -1,0 +1,39 @@
+rules:
+  - id: python-ssrf-requests
+    languages: [python]
+    severity: WARNING
+    message: >
+      Server-Side Request Forgery (SSRF): A URL from user input is passed to
+      requests.get() / requests.post() without validation.
+      An attacker can target internal services (metadata APIs, localhost, etc.).
+    pattern-either:
+      - pattern: requests.get(request.GET.get(...), ...)
+      - pattern: requests.get(request.POST.get(...), ...)
+      - pattern: requests.post(request.GET.get(...), ...)
+      - pattern: requests.get($URL, ...)
+    fix: >
+      Validate the URL against an allowlist before making the request:
+        from urllib.parse import urlparse
+        parsed = urlparse(user_url)
+        if parsed.hostname not in ALLOWED_HOSTS:
+            raise ValueError("URL not in allowlist")
+    metadata:
+      cwe: CWE-918
+      owasp: "A10:2021 – Server-Side Request Forgery"
+      category: "SSRF"
+      confidence: MEDIUM
+      title: "Potential SSRF via requests"
+
+  - id: python-ssrf-urllib
+    languages: [python]
+    severity: WARNING
+    message: >
+      SSRF via urllib: urllib.request.urlopen() is called with a user-controlled URL.
+    pattern: urllib.request.urlopen($USER_URL)
+    fix: Validate the URL hostname against an allowlist before fetching.
+    metadata:
+      cwe: CWE-918
+      owasp: "A10:2021 – Server-Side Request Forgery"
+      category: "SSRF"
+      confidence: MEDIUM
+      title: "Potential SSRF via urllib"

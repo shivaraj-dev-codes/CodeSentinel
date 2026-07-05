@@ -1,0 +1,80 @@
+rules:
+  - id: python-sql-injection-fstring
+    languages: [python]
+    severity: ERROR
+    message: >
+      SQL Injection via f-string: User-controlled data is interpolated directly
+      into an SQL query string. This allows attackers to modify the query logic,
+      bypass authentication, extract, or delete data.
+    pattern-either:
+      - pattern: $DB.execute(f"... $VAR ...")
+      - pattern: $DB.execute(f'... $VAR ...')
+      - pattern: cursor.execute(f"... $VAR ...")
+      - pattern: cursor.execute(f'... $VAR ...')
+    fix: >
+      Use parameterised queries instead:
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 – Injection"
+      category: "SQL Injection"
+      confidence: HIGH
+      title: "SQL Injection via f-string"
+
+  - id: python-sql-injection-format
+    languages: [python]
+    severity: ERROR
+    message: >
+      SQL Injection via .format(): String formatting is used to build an SQL query
+      with user-supplied values. Use parameterised queries instead.
+    pattern-either:
+      - pattern: $DB.execute("... {} ...".format(...))
+      - pattern: cursor.execute("... {} ...".format(...))
+      - pattern: $DB.execute("...".format($USER_INPUT))
+    fix: >
+      Replace .format() with parameterised placeholders:
+        cursor.execute("SELECT * FROM t WHERE col = %s", (value,))
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 – Injection"
+      category: "SQL Injection"
+      confidence: HIGH
+      title: "SQL Injection via .format()"
+
+  - id: python-sql-injection-concat
+    languages: [python]
+    severity: ERROR
+    message: >
+      SQL Injection via string concatenation: Never concatenate user input
+      into SQL queries.
+    pattern-either:
+      - pattern: $DB.execute("SELECT" + $VAR)
+      - pattern: $DB.execute("INSERT" + $VAR)
+      - pattern: $DB.execute("UPDATE" + $VAR)
+      - pattern: $DB.execute("DELETE" + $VAR)
+    fix: Use parameterised queries — never concatenate strings into SQL.
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 – Injection"
+      category: "SQL Injection"
+      confidence: HIGH
+      title: "SQL Injection via string concatenation"
+
+  - id: django-orm-raw-injection
+    languages: [python]
+    severity: ERROR
+    message: >
+      SQL Injection in Django raw(): Passing user input directly to
+      QuerySet.raw() or connection.execute() without parameterisation.
+    pattern-either:
+      - pattern: $MODEL.objects.raw(f"...")
+      - pattern: $MODEL.objects.raw("..." + $VAR)
+    fix: >
+      Use Django's parameterised raw():
+        MyModel.objects.raw("SELECT * FROM t WHERE id = %s", [user_id])
+    metadata:
+      cwe: CWE-89
+      owasp: "A03:2021 – Injection"
+      category: "SQL Injection"
+      confidence: HIGH
+      title: "SQL Injection in Django ORM raw()"

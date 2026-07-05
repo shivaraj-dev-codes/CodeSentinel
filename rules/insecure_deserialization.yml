@@ -1,0 +1,54 @@
+rules:
+  - id: python-pickle-deserialize
+    languages: [python]
+    severity: ERROR
+    message: >
+      Insecure Deserialization via pickle: pickle.loads() executes arbitrary
+      Python code embedded in the data stream. Never deserialize untrusted data
+      with pickle.
+    pattern-either:
+      - pattern: pickle.loads($DATA)
+      - pattern: pickle.load($FILE)
+      - pattern: cPickle.loads($DATA)
+    fix: >
+      Use a safe format like JSON for untrusted data:
+        import json; data = json.loads(raw_bytes)
+      If you must use pickle, only deserialize data from trusted sources.
+    metadata:
+      cwe: CWE-502
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+      category: "Insecure Deserialization"
+      confidence: HIGH
+      title: "Insecure Deserialization via pickle"
+
+  - id: python-yaml-unsafe-load
+    languages: [python]
+    severity: WARNING
+    message: >
+      Insecure YAML Deserialization: yaml.load() without Loader=yaml.SafeLoader
+      can execute arbitrary Python code embedded in YAML. Use yaml.safe_load() instead.
+    pattern: yaml.load($DATA)
+    fix: >
+      Replace yaml.load() with yaml.safe_load():
+        data = yaml.safe_load(file_content)
+    metadata:
+      cwe: CWE-502
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+      category: "Insecure Deserialization"
+      confidence: HIGH
+      title: "Insecure YAML Deserialization"
+
+  - id: python-marshal-deserialize
+    languages: [python]
+    severity: ERROR
+    message: >
+      Insecure Deserialization via marshal: marshal.loads() should never be used
+      with untrusted data — it can execute arbitrary bytecode.
+    pattern: marshal.loads($DATA)
+    fix: Use json.loads() or ast.literal_eval() for untrusted input.
+    metadata:
+      cwe: CWE-502
+      owasp: "A08:2021 – Software and Data Integrity Failures"
+      category: "Insecure Deserialization"
+      confidence: HIGH
+      title: "Insecure Deserialization via marshal"

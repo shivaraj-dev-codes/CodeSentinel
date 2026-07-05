@@ -1,0 +1,42 @@
+rules:
+  - id: python-path-traversal-join
+    languages: [python]
+    severity: WARNING
+    message: >
+      Path Traversal: os.path.join() is called with user-controlled input.
+      An attacker can supply '../' sequences to escape the intended directory
+      and access arbitrary files on the filesystem.
+    pattern-either:
+      - pattern: os.path.join($BASE, request.GET.get(...))
+      - pattern: os.path.join($BASE, request.POST.get(...))
+      - pattern: os.path.join($BASE, $USER_INPUT)
+    fix: >
+      Validate and resolve the path before use:
+        import os, pathlib
+        safe_base = pathlib.Path("/safe/base").resolve()
+        target = (safe_base / user_filename).resolve()
+        if not str(target).startswith(str(safe_base)):
+            raise ValueError("Path traversal detected")
+    metadata:
+      cwe: CWE-22
+      owasp: "A01:2021 – Broken Access Control"
+      category: "Path Traversal"
+      confidence: MEDIUM
+      title: "Path Traversal via os.path.join()"
+
+  - id: python-open-user-input
+    languages: [python]
+    severity: WARNING
+    message: >
+      Path Traversal: open() is called with user-controlled input without
+      validation. An attacker can read or write arbitrary files.
+    pattern-either:
+      - pattern: open(request.GET.get(...), ...)
+      - pattern: open(request.POST.get(...), ...)
+    fix: Validate and normalise the path with pathlib.Path.resolve() before opening.
+    metadata:
+      cwe: CWE-22
+      owasp: "A01:2021 – Broken Access Control"
+      category: "Path Traversal"
+      confidence: HIGH
+      title: "Path Traversal via open()"

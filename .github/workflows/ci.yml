@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DJANGO_SETTINGS_MODULE: config.settings.development
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/codesentinel_test
+  REDIS_URL: redis://localhost:6379/0
+  DJANGO_SECRET_KEY: ci-test-secret-key-not-for-production
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install ruff mypy django-stubs
+      - name: Ruff (Python lint)
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+      - name: mypy (type check)
+        run: mypy apps/ --ignore-missing-imports
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: cd frontend && npm ci
+      - name: ESLint
+        run: cd frontend && npm run lint
+      - name: Prettier check
+        run: cd frontend && npm run format:check
+
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: codesentinel_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run migrations
+        run: python manage.py migrate --settings=config.settings.development
+      - name: Run tests with coverage
+        run: pytest --cov=apps --cov-report=xml --cov-fail-under=80
+      - uses: codecov/codecov-action@v4
+
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: cd frontend && npm ci
+      - name: Run Vitest
+        run: cd frontend && npm run test
+
+  security-scan:
+    name: Security Scan (dogfood)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install bandit semgrep
+      - name: Bandit (SAST)
+        run: bandit -r apps/ ml/ -ll --exit-zero
+      - name: Semgrep (self-scan)
+        run: semgrep --config rules/ . --json | python -c "
+import json, sys
+data = json.load(sys.stdin)
+critical = [r for r in data['results'] if r['extra']['severity'] in ('ERROR',)]
+if critical:
+    print(f'FAIL: {len(critical)} critical finding(s) found in own codebase')
+    for r in critical:
+        print(f\"  {r['path']}:{r['start']['line']} — {r['check_id']}\")
+    sys.exit(1)
+print(f'PASS: {len(data[\"results\"])} total findings, none critical.')
+"

@@ -1,0 +1,77 @@
+rules:
+  - id: python-md5-password
+    languages: [python]
+    severity: ERROR
+    message: >
+      Weak Cryptography: MD5 is cryptographically broken and unsuitable for
+      password hashing. Use bcrypt, scrypt, or argon2 instead.
+    pattern: hashlib.md5(...)
+    fix: >
+      Use a password-specific hashing function:
+        import bcrypt
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    metadata:
+      cwe: CWE-327
+      owasp: "A02:2021 – Cryptographic Failures"
+      category: "Cryptography Issues"
+      confidence: HIGH
+      title: "Weak Hash Function: MD5"
+
+  - id: python-sha1-password
+    languages: [python]
+    severity: ERROR
+    message: >
+      Weak Cryptography: SHA-1 is deprecated for security-sensitive operations.
+      Use SHA-256 or stronger for hashing, or bcrypt/argon2 for passwords.
+    pattern: hashlib.sha1(...)
+    fix: >
+      For checksums: use hashlib.sha256() or hashlib.sha3_256()
+      For passwords: use bcrypt or argon2-cffi
+    metadata:
+      cwe: CWE-327
+      owasp: "A02:2021 – Cryptographic Failures"
+      category: "Cryptography Issues"
+      confidence: HIGH
+      title: "Weak Hash Function: SHA-1"
+
+  - id: python-random-for-secrets
+    languages: [python]
+    severity: WARNING
+    message: >
+      Insecure Randomness: random.random() / random.randint() are not
+      cryptographically secure. Use the 'secrets' module for tokens and passwords.
+    pattern-either:
+      - pattern: random.random()
+      - pattern: random.randint(...)
+      - pattern: random.choice(...)
+    fix: >
+      Use the secrets module for cryptographic randomness:
+        import secrets
+        token = secrets.token_hex(32)
+        choice = secrets.choice(alphabet)
+    metadata:
+      cwe: CWE-338
+      owasp: "A02:2021 – Cryptographic Failures"
+      category: "Cryptography Issues"
+      confidence: MEDIUM
+      title: "Insecure Random Number Generator"
+
+  - id: python-aes-ecb-mode
+    languages: [python]
+    severity: ERROR
+    message: >
+      Weak Encryption: AES in ECB mode does not provide semantic security.
+      Identical plaintext blocks produce identical ciphertext, leaking patterns.
+      Use AES-GCM or AES-CBC with a random IV.
+    pattern: AES.new($KEY, AES.MODE_ECB)
+    fix: >
+      Use AES-GCM for authenticated encryption:
+        from Crypto.Cipher import AES
+        cipher = AES.new(key, AES.MODE_GCM)
+        ciphertext, tag = cipher.encrypt_and_digest(data)
+    metadata:
+      cwe: CWE-327
+      owasp: "A02:2021 – Cryptographic Failures"
+      category: "Cryptography Issues"
+      confidence: HIGH
+      title: "AES ECB Mode"
