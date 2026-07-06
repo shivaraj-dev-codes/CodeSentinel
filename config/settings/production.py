@@ -2,7 +2,11 @@
 from .base import *  # noqa: F401, F403
 
 DEBUG = False
-
+ALLOWED_HOSTS = [
+    'codesentinel-ik79.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SECURE_HSTS_SECONDS = 31536000
