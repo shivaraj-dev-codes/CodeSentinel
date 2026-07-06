@@ -47,6 +47,7 @@ Pillow==10.2.0
 python-dateutil==2.9.0.post0
 django-filter==24.1
 django-extensions==3.2.3
+python-json-logger==2.0.7
 
 # Dev / Test
 pytest==8.1.1
